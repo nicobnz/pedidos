@@ -91,6 +91,7 @@ function render() {
     const id = `p${pi}c${ci}`;
     if (c.tipo === 'apellido') return `<div class="f"><div class="row"><label><input type="checkbox" id="${id}" onchange="tog('${id}')">${esc(c.campo)}${persona.ap2 ? '' : ': ' + esc(persona.apellido)}</label>${qty(id + 'q', true)}</div>${persona.ap2 ? c.opciones.map((o, k) => `<label class="r"><input type="radio" name="${id}o" value="${k}" disabled>${esc(o)}</label>`).join('') : ''}</div>`;
     if (c.tipo === 'si_cantidad') return `<div class="f row"><label><input type="checkbox" id="${id}" onchange="tog('${id}')">${esc(c.campo)}</label>${qty(id + 'q', true)}</div>`;
+    if (c.tipo === 'texto') return `<div class="f"><label for="${id}"><b>${esc(c.campo)}</b></label><input type="text" id="${id}" maxlength="120" ${/celular|tel/i.test(c.campo) ? 'inputmode="tel"' : ''} style="width:100%;margin-top:6px"></div>`;
     return `<div class="f row"><b>${esc(c.campo)}</b><span><select id="${id}" onchange="$('${id}q').disabled=!this.value"><option value="">No</option>${c.opciones.map(o => `<option>${esc(o)}</option>`).join('')}</select> ${qty(id + 'q', true)}</span></div>`;
   }).join('')}<button onclick="enviar(${pi})">Guardar pedido</button><p id="m${pi}" role="status"></p></section>`).join('');
 }
@@ -111,6 +112,10 @@ async function enviar(pi) {
       items.push({campo: c.campo, valor: v, cantidad: +$(id + 'q').value});
     } else if (c.tipo === 'si_cantidad') {
       if ($(id).checked) items.push({campo: c.campo, valor: 'Sí', cantidad: +$(id + 'q').value});
+    } else if (c.tipo === 'texto') {
+      const v = $(id).value.trim();
+      if (!v) { m.textContent = 'Completá: ' + c.campo + '.'; return; }
+      items.push({campo: c.campo, valor: v, cantidad: ''});
     } else if ($(id).value) items.push({campo: c.campo, valor: $(id).value, cantidad: +$(id + 'q').value});
   }
   m.className = 'mut'; m.textContent = 'Guardando…';
