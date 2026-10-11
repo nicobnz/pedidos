@@ -47,7 +47,7 @@ button{background:var(--acc);color:var(--accink);border:0;border-radius:4px;padd
   <div id="pedidos" hidden></div>
 </main>
 <script>
-const API = 'PEGAR_AQUI_LA_URL_DEL_SCRIPT'; // URL de la aplicación web de Apps Script
+const API = 'https://script.google.com/macros/s/AKfycbz-QoI90Zp0gUt9_PjRsakdJmJ2iGnf0vvHfB3uCvPh-bjiO-qTwlW1kqkMi3PbvqviKQ/exec'; // URL de la aplicación web de Apps Script
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let persona = null, pedidos = {};
