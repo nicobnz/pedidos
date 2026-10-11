@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedidos del grupo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9e5d6;--card:#f7f5ec;--ink:#1d2316;--mut:#5b6350;--acc:#44532f;--accink:#fff;--line:#c9c4ae;--err:#9b2c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#161a12;--card:#20261a;--ink:#ecebdd;--mut:#a3aa95;--acc:#8fa86a;--accink:#10140b;--line:#3a4330;--err:#e58a7a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 Barlow,system-ui,sans-serif;padding:20px 16px 48px}
+main{max-width:520px;margin:0 auto}
+h1,h2{font-family:"Barlow Condensed",system-ui,sans-serif;margin:0 0 12px;line-height:1.1}
+h1{font-size:38px}h2{font-size:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:18px;margin:16px 0}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.f{padding:12px 0;border-top:1px solid var(--line)}.f:first-of-type{border-top:0}
+label.r{display:block;padding:6px 0}
+input,select,button{font:inherit;color:inherit}
+input[type=number],input[type=text],select{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:9px 10px}
+input[type=checkbox],input[type=radio]{width:20px;height:20px;accent-color:var(--acc);vertical-align:-4px;margin-right:8px}
+select:disabled{opacity:.4}
+button{background:var(--acc);color:var(--accink);border:0;border-radius:4px;padding:11px 18px;font-weight:600;cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.err{color:var(--err)}.mut{color:var(--mut)}
+#pedidos[hidden],#quien[hidden]{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Pedidos del grupo</h1>
+  <div class="card">
+    <div style="margin-bottom:12px"><b>1. Elegí tu lista</b>
+      <label class="r"><input type="radio" name="s" value="F">Femenino</label>
+      <label class="r"><input type="radio" name="s" value="M">Masculino</label>
+    </div>
+    <b>2. Ingresá tu número</b>
+    <div class="row" style="margin-top:8px">
+      <input type="number" id="n" inputmode="numeric" placeholder="Tu número" style="flex:1" aria-label="Tu número">
+      <button id="go" onclick="buscar()">Buscar</button>
+    </div>
+    <p class="mut" id="msg" role="status" style="margin:10px 0 0"></p>
+  </div>
+  <p id="quien" hidden></p>
+  <div id="pedidos" hidden></div>
+</main>
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbz-QoI90Zp0gUt9_PjRsakdJmJ2iGnf0vvHfB3uCvPh-bjiO-qTwlW1kqkMi3PbvqviKQ/exec'; // URL de la aplicación web de Apps Script
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let persona = null, pedidos = {};
+
+const get = async q => (await fetch(API + '?' + new URLSearchParams(q))).json();
+const qty = (id, dis) => `<select id="${id}" ${dis ? 'disabled' : ''} aria-label="Cantidad">${[1,2,3,4].map(i => `<option>${i}</option>`).join('')}</select>`;
+
+function tog(id) {
+  const on = $(id).checked;
+  $(id + 'q').disabled = !on;
+  document.querySelectorAll(`input[name="${id}o"]`).forEach(r => { r.disabled = !on; if (!on) r.checked = false; });
+}
+
+async function buscar() {
+  const n = $('n').value.trim(), sx = document.querySelector('input[name="s"]:checked');
+  if (!sx) { $('msg').className = 'err'; $('msg').textContent = 'Primero elegí femenino o masculino.'; return; }
+  if (!n) return;
+  const s = sx.value;
+  $('msg').className = 'mut'; $('msg').textContent = 'Buscando…';
+  try {
+    const [p, d] = await Promise.all([get({action:'persona', s, n}), get({action:'pedidos'})]);
+    if (!p.ok) { $('msg').className = 'err'; $('msg').textContent = 'No encontramos ese número en esa lista. Revisalo e intentá de nuevo.'; return; }
+    persona = {...p, n, s}; pedidos = d.pedidos || {};
+    $('msg').textContent = '';
+    $('quien').hidden = false;
+    $('quien').innerHTML = `Hola, <b>${esc(p.apellido)} ${esc(p.nombre)}</b>. Si no sos vos, cambiá el número.`;
+    render();
+  } catch (e) { $('msg').className = 'err'; $('msg').textContent = 'No pudimos conectar. Probá de nuevo en un momento.'; }
+}
+
+function render() {
+  const keys = Object.keys(pedidos);
+  $('pedidos').hidden = false;
+  if (!keys.length) { $('pedidos').innerHTML = '<p class="mut">No hay pedidos abiertos por ahora.</p>'; return; }
+  $('pedidos').innerHTML = keys.map((ped, pi) => `<section class="card"><h2>${esc(ped)}</h2>${pedidos[ped].map((c, ci) => {
+    const id = `p${pi}c${ci}`;
+    if (c.tipo === 'apellido') return `<div class="f"><div class="row"><label><input type="checkbox" id="${id}" onchange="tog('${id}')">${esc(c.campo)}${persona.ap2 ? '' : ': ' + esc(persona.apellido)}</label>${qty(id + 'q', true)}</div>${persona.ap2 ? c.opciones.map((o, k) => `<label class="r"><input type="radio" name="${id}o" value="${k}" disabled>${esc(o)}</label>`).join('') : ''}</div>`;
+    if (c.tipo === 'si_cantidad') return `<div class="f row"><label><input type="checkbox" id="${id}" onchange="tog('${id}')">${esc(c.campo)}</label>${qty(id + 'q', true)}</div>`;
+    return `<div class="f row"><b>${esc(c.campo)}</b><span><select id="${id}" onchange="$('${id}q').disabled=!this.value"><option value="">No</option>${c.opciones.map(o => `<option>${esc(o)}</option>`).join('')}</select> ${qty(id + 'q', true)}</span></div>`;
+  }).join('')}<button onclick="enviar(${pi})">Guardar pedido</button><p id="m${pi}" role="status"></p></section>`).join('');
+}
+
+async function enviar(pi) {
+  const ped = Object.keys(pedidos)[pi], m = $('m' + pi), items = [];
+  m.className = 'err';
+  for (const [ci, c] of pedidos[ped].entries()) {
+    const id = `p${pi}c${ci}`;
+    if (c.tipo === 'apellido') {
+      if (!$(id).checked) continue;
+      let v = persona.apellido;
+      if (persona.ap2) {
+        const r = document.querySelector(`input[name="${id}o"]:checked`);
+        if (!r) { m.textContent = 'Elegí cómo va tu apellido.'; return; }
+        v = [persona.apellido, persona.ap1, persona.ap2][+r.value];
+      }
+      items.push({campo: c.campo, valor: v, cantidad: +$(id + 'q').value});
+    } else if (c.tipo === 'si_cantidad') {
+      if ($(id).checked) items.push({campo: c.campo, valor: 'Sí', cantidad: +$(id + 'q').value});
+    } else if ($(id).value) items.push({campo: c.campo, valor: $(id).value, cantidad: +$(id + 'q').value});
+  }
+  m.className = 'mut'; m.textContent = 'Guardando…';
+  try {
+    const r = await (await fetch(API, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify({s: persona.s, n: persona.n, pedido: ped, items})})).json();
+    m.className = r.ok ? 'mut' : 'err';
+    m.textContent = r.ok ? 'Guardado. Si te equivocaste, cambiá los datos y guardá de nuevo.' : 'No se pudo guardar. Probá de nuevo.';
+  } catch (e) { m.className = 'err'; m.textContent = 'No pudimos conectar. Probá de nuevo.'; }
+}
+$('n').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+</script>
+</body>
+</html>
