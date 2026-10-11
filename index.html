@@ -47,7 +47,7 @@ button{background:var(--acc);color:var(--accink);border:0;border-radius:4px;padd
   <div id="pedidos" hidden></div>
 </main>
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbz-QoI90Zp0gUt9_PjRsakdJmJ2iGnf0vvHfB3uCvPh-bjiO-qTwlW1kqkMi3PbvqviKQ/exec'; // URL de la aplicación web de Apps Script
+const API = 'PEGAR_AQUI_LA_URL_DEL_SCRIPT'; // URL de la aplicación web de Apps Script
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let persona = null, pedidos = {};
@@ -71,6 +71,11 @@ async function buscar() {
     const [p, d] = await Promise.all([get({action:'persona', s, n}), get({action:'pedidos'})]);
     if (!p.ok) { $('msg').className = 'err'; $('msg').textContent = 'No encontramos ese número en esa lista. Revisalo e intentá de nuevo.'; return; }
     persona = {...p, n, s}; pedidos = d.pedidos || {};
+    const q = new URLSearchParams(location.search).get('pedido');
+    if (q) {
+      const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      pedidos = Object.fromEntries(Object.entries(pedidos).filter(([k]) => norm(k).startsWith(norm(q))));
+    }
     $('msg').textContent = '';
     $('quien').hidden = false;
     $('quien').innerHTML = `Hola, <b>${esc(p.apellido)} ${esc(p.nombre)}</b>. Si no sos vos, cambiá el número.`;
